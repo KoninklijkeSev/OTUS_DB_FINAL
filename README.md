@@ -293,3 +293,96 @@ CREATE INDEX idx_months_name ON months(name);
 CREATE INDEX idx_sales_customer_id ON sales(customer_id);
 CREATE INDEX idx_sales_sales_date ON sales(sales_date);
 CREATE INDEX idx_sales_sales_details_id ON sales(sales_details_id);
+
+--Добавление данных в таблицу
+-- Вставка данных в таблицу Категорий продуктов (products_categories)
+INSERT INTO products_categories (name) VALUES
+('Овощи и фрукты'),
+('Молочные продукты'),
+('Мясо и рыба'),
+('Зерновые продукты'),
+('Напитки');
+
+-- Вставка данных в таблицу Поставщики продуктов (products_suppliers)
+INSERT INTO products_suppliers (name, address, phone, email) VALUES
+('Поставщик Овощей', 'ул. Овощная 1', '1234567890', 'supplier_vegetables@example.com'),
+('Поставщик Молочных Продуктов', 'ул. Молочная 2', '0987654321', 'supplier_dairy@example.com'),
+('Поставщик Мяса и Рыбы', 'ул. Мясная 3', '1122334455', 'supplier_meat_fish@example.com'),
+('Поставщик Зерновых Продуктов', 'ул. Зерновая 4', '5544332211', 'supplier_grains@example.com'),
+('Поставщик Напитков', 'ул. Напитковая 5', '6677889900', 'supplier_drinks@example.com');
+
+-- Вставка данных в таблицу Производители продуктов (products_manufacturers)
+INSERT INTO products_manufacturers (name, address, phone, email) VALUES
+('Производитель Овощей', 'ул. Овощная 10', '1234567890', 'manufacturer_vegetables@example.com'),
+('Производитель Молочных Продуктов', 'ул. Молочная 20', '0987654321', 'manufacturer_dairy@example.com'),
+('Производитель Мяса и Рыбы', 'ул. Мясная 30', '1122334455', 'manufacturer_meat_fish@example.com'),
+('Производитель Зерновых Продуктов', 'ул. Зерновая 40', '5544332211', 'manufacturer_grains@example.com'),
+('Производитель Напитков', 'ул. Напитковая 50', '6677889900', 'manufacturer_drinks@example.com');
+
+-- Вставка данных в таблицу Детали продукта (products_details)
+INSERT INTO products_details (delivery_date, manufacture_date, best_by_date, expiration_date) VALUES
+('2023-10-01', '2023-09-01', '2024-09-01', '2024-10-01'),
+('2023-10-02', '2023-09-02', '2024-09-02', '2024-10-02'),
+('2023-10-03', '2023-09-03', '2024-09-03', '2024-10-03'),
+('2023-10-04', '2023-09-04', '2024-09-04', '2024-10-04'),
+('2023-10-05', '2023-09-05', '2024-09-05', '2024-10-05');
+
+-- Вставка данных в таблицу Сводная таблица поставщиков и производителей (products_suppliers_manufacturers)
+INSERT INTO products_suppliers_manufacturers (products_suppliers_id, products_manufacturers_id) VALUES
+(1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
+
+-- Вставка данных в таблицу Продукты (products)
+INSERT INTO products (products_categories_id, name, description, products_suppliers_id, products_details_id) VALUES
+(1, 'Яблоки', 'Свежие яблоки из Испании', 1, 1),
+(2, 'Молоко', 'Молоко цельное', 2, 2),
+(3, 'Говядина', 'Мраморная говядина', 3, 3),
+(4, 'Рис', 'Рис басмати', 4, 4),
+(5, 'Кола', 'Кола без сахара', 5, 5);
+
+-- Вставка данных в таблицу Цены продуктов (products_prices)
+INSERT INTO products_prices (product_id, price, discount_price) VALUES
+(1, 100.00, 90.00),
+(2, 80.00, 72.00),
+(3, 300.00, 270.00),
+(4, 50.00, 45.00),
+(5, 60.00, 54.00);
+
+-- Вставка данных в таблицу Детали покупки (sales_details)
+INSERT INTO sales_details (product_id, quantity, products_price_id) VALUES
+(1, 2, 1),
+(2, 3, 2),
+(3, 1, 3),
+(4, 5, 4),
+(5, 4, 5);
+
+-- Вставка данных в таблицу Покупатели (customers)
+INSERT INTO customers (name, address, phone, email, customers_categories_id) VALUES
+('Иван Иванов', 'ул. Покупателей 1', '1234567890', 'ivan@example.com', 1),
+('Мария Петрова', 'ул. Покупателей 2', '0987654321', 'maria@example.com', 2),
+('Алексей Сидоров', 'ул. Покупателей 3', '1122334455', 'aleksey@example.com', 3),
+('Елена Николаева', 'ул. Покупателей 4', '5544332211', 'elena@example.com', 4),
+('Дмитрий Васильев', 'ул. Покупателей 5', '6677889900', 'dmitriy@example.com', 5);
+
+-- Вставка данных в таблицу Категории покупателя (customers_categories)
+INSERT INTO customers_categories (name, month_id) VALUES
+('Овощи и фрукты', 1),
+('Молочные продукты', 2),
+('Мясо и рыба', 3),
+('Зерновые продукты', 4),
+('Напитки', 5);
+
+-- Вставка данных в таблицу Месяца (months)
+INSERT INTO months (name) VALUES
+('Январь'),
+('Февраль'),
+('Март'),
+('Апрель'),
+('Май');
+
+-- Вставка данных в таблицу Покупки (sales)
+INSERT INTO sales (customer_id, sales_date, sales_details_id) VALUES
+(1, '2023-10-01', 1),
+(2, '2023-10-02', 2),
+(3, '2023-10-03', 3),
+(4, '2023-10-04', 4),
+(5, '2023-10-05', 5);
