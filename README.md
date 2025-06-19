@@ -261,3 +261,35 @@ COMMENT ON COLUMN sales.id IS 'ID покупки';
 COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
 COMMENT ON COLUMN sales.sales_date IS 'Дата покупки';
 COMMENT ON COLUMN sales.sales_detalils_id IS 'ID деталей покупки';
+
+--Добавление индексов
+CREATE INDEX idx_products_categories_name ON products_categories(name);
+
+CREATE INDEX idx_products_suppliers_name ON products_suppliers(name);
+
+CREATE INDEX idx_products_manufacturers_name ON products_manufacturers(name);
+
+CREATE INDEX idx_products_suppliers_manufacturers_products_suppliers_id ON products_suppliers_manufacturers(products_suppliers_id);
+CREATE INDEX idx_products_suppliers_manufacturers_products_manufacturers_id ON products_suppliers_manufacturers(products_manufacturers_id);
+
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_products_categories_id ON products(products_categories_id);
+CREATE INDEX idx_products_products_suppliers_id ON products(products_suppliers_id);
+CREATE INDEX idx_products_products_details_id ON products(products_details_id);
+
+CREATE INDEX idx_products_prices_product_id ON products_prices(product_id);
+
+CREATE INDEX idx_sales_details_product_id ON sales_details(product_id);
+CREATE INDEX idx_sales_details_products_price_id ON sales_details(products_price_id);
+
+CREATE INDEX idx_customers_name ON customers(name);
+CREATE INDEX idx_customers_customers_categories_id ON customers(customers_categories_id);
+
+CREATE INDEX idx_customers_categories_name ON customers_categories(name);
+CREATE INDEX idx_customers_categories_month_id ON customers_categories(month_id);
+
+CREATE INDEX idx_months_name ON months(name);
+
+CREATE INDEX idx_sales_customer_id ON sales(customer_id);
+CREATE INDEX idx_sales_sales_date ON sales(sales_date);
+CREATE INDEX idx_sales_sales_details_id ON sales(sales_details_id);
