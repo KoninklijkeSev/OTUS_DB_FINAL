@@ -200,6 +200,28 @@ COMMENT ON COLUMN sales_details.product_id IS 'ID продукта';
 COMMENT ON COLUMN sales_details.quantity IS 'Количество';
 COMMENT ON COLUMN sales_details.products_price_id IS 'ID цены продукта';
 
+-- Создание таблицы Месяца (months)
+CREATE TABLE months (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+COMMENT ON COLUMN months.id IS 'ID месяца';
+COMMENT ON COLUMN months.name IS 'Наименование месяца';
+
+-- Создание таблицы Категории покупателя (customers_categories)
+CREATE TABLE customers_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    month_id INT NOT NULL,
+    FOREIGN KEY (month_id) REFERENCES months(id)
+);
+
+COMMENT ON COLUMN customers_categories.id IS 'ID категории покупателя';
+COMMENT ON COLUMN customers_categories.name IS 'Наименование категории';
+COMMENT ON COLUMN customers_categories.month_id IS 'ID месяца';
+
+
 -- Создание таблицы Покупатели (customers)
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
@@ -218,36 +240,22 @@ COMMENT ON COLUMN customers.phone IS 'Телефон покупателя';
 COMMENT ON COLUMN customers.email IS 'E-mail покупателя';
 COMMENT ON COLUMN customers.customers_categories_id IS 'ID категорий покупателя';
 
--- Создание таблицы Категории покупателя (customers_categories)
-CREATE TABLE customers_categories (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    month_id INT NOT NULL,
-    FOREIGN KEY (month_id) REFERENCES months(id)
-);
 
-COMMENT ON COLUMN customers_categories.id IS 'ID категории покупателя';
-COMMENT ON COLUMN customers_categories.name IS 'Наименование категории';
-COMMENT ON COLUMN customers_categories.month_id IS 'ID месяца';
-
--- Создание таблицы Месяца (months)
-CREATE TABLE months (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
-);
-
-COMMENT ON COLUMN months.id IS 'ID месяца';
-COMMENT ON COLUMN months.name IS 'Наименование месяца';
 
 -- Создание таблицы Покупки (sales)
 CREATE TABLE sales (
     id SERIAL PRIMARY KEY,
     customer_id INT NOT NULL,
     sales_date DATE NOT NULL,
-    sales_detalils_id INT NOT NULL,
+    sales_details_id INT NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id),
-    FOREIGN KEY (sales_detalils_id) REFERENCES sales_details(id)
+    FOREIGN KEY (sales_details_id) REFERENCES sales_details(id)
 );
+
+COMMENT ON COLUMN sales.id IS 'ID покупки';
+COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
+COMMENT ON COLUMN sales.sales_date IS 'Дата покупки';
+COMMENT ON COLUMN sales.sales_details_id IS 'ID деталей покупки';
 
 COMMENT ON COLUMN sales.id IS 'ID покупки';
 COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
