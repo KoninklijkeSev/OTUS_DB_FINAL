@@ -240,8 +240,6 @@ COMMENT ON COLUMN customers.phone IS 'Телефон покупателя';
 COMMENT ON COLUMN customers.email IS 'E-mail покупателя';
 COMMENT ON COLUMN customers.customers_categories_id IS 'ID категорий покупателя';
 
-
-
 -- Создание таблицы Покупки (sales)
 CREATE TABLE sales (
     id SERIAL PRIMARY KEY,
@@ -381,3 +379,44 @@ INSERT INTO sales (customer_id, sales_date, sales_details_id) VALUES
 (3, '2023-10-03', 3),
 (4, '2023-10-04', 4),
 (5, '2023-10-05', 5);
+
+## **Примеры хранимых процедур**
+## **Хранимая процедура, которая будет собирать данные о продукте, при запросе ID продукта**
+
+--Код процедуры
+CREATE OR REPLACE FUNCTION get_product_info(product_id INT)
+RETURNS TABLE (
+    product_name VARCHAR(255),
+    category_name VARCHAR(255),
+    product_description TEXT,
+    supplier_name VARCHAR(255),
+    manufacturer_name VARCHAR(255)
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.name::VARCHAR(255) AS product_name,
+        pc.name::VARCHAR(255) AS category_name,
+        p.description::TEXT AS product_description,
+        ps.name::VARCHAR(255) AS supplier_name,
+        pm.name::VARCHAR(255) AS manufacturer_name
+    FROM 
+        products p
+    JOIN 
+        products_categories pc ON p.products_categories_id = pc.id
+    JOIN 
+        products_suppliers ps ON p.products_suppliers_id = ps.id
+    JOIN 
+        products_suppliers_manufacturers psm ON ps.id = psm.products_suppliers_id
+    JOIN 
+        products_manufacturers pm ON psm.products_manufacturers_id = pm.id
+    WHERE 
+        p.id = product_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Вызов процедуры get_product_info, чтобы узнать информацию о продукте с ID = 1
+SELECT * FROM get_product_info(1);
+
+--Удаление процедуры get_product_info
+DROP FUNCTION IF EXISTS get_product_info(p_product_id INT);
