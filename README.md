@@ -257,11 +257,6 @@ COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
 COMMENT ON COLUMN sales.sales_date IS 'Дата покупки';
 COMMENT ON COLUMN sales.sales_details_id IS 'ID деталей покупки';
 
-COMMENT ON COLUMN sales.id IS 'ID покупки';
-COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
-COMMENT ON COLUMN sales.sales_date IS 'Дата покупки';
-COMMENT ON COLUMN sales.sales_detalils_id IS 'ID деталей покупки';
-
 --Добавление индексов
 CREATE INDEX idx_products_categories_name ON products_categories(name);
 
