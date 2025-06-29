@@ -255,37 +255,17 @@ COMMENT ON COLUMN sales.customer_id IS 'ID покупателя';
 COMMENT ON COLUMN sales.sales_date IS 'Дата покупки';
 COMMENT ON COLUMN sales.sales_details_id IS 'ID деталей покупки';
 
---Добавление индексов
-CREATE INDEX idx_products_categories_name ON products_categories(name);
+-- Добавление уникального ограничения для таблицы products_manufacturers
+ALTER TABLE products_manufacturers ADD CONSTRAINT unique_manufacturer_name UNIQUE (name);
 
-CREATE INDEX idx_products_suppliers_name ON products_suppliers(name);
+-- Добавление уникального ограничения для таблицы products_suppliers
+ALTER TABLE products_suppliers ADD CONSTRAINT unique_supplier_name UNIQUE (name);
 
-CREATE INDEX idx_products_manufacturers_name ON products_manufacturers(name);
+-- Добавление уникального ограничения для таблицы products_categories
+ALTER TABLE products_categories ADD CONSTRAINT unique_category_name UNIQUE (name);
 
-CREATE INDEX idx_products_suppliers_manufacturers_products_suppliers_id ON products_suppliers_manufacturers(products_suppliers_id);
-CREATE INDEX idx_products_suppliers_manufacturers_products_manufacturers_id ON products_suppliers_manufacturers(products_manufacturers_id);
-
-CREATE INDEX idx_products_name ON products(name);
-CREATE INDEX idx_products_products_categories_id ON products(products_categories_id);
-CREATE INDEX idx_products_products_suppliers_id ON products(products_suppliers_id);
-CREATE INDEX idx_products_products_details_id ON products(products_details_id);
-
-CREATE INDEX idx_products_prices_product_id ON products_prices(product_id);
-
-CREATE INDEX idx_sales_details_product_id ON sales_details(product_id);
-CREATE INDEX idx_sales_details_products_price_id ON sales_details(products_price_id);
-
-CREATE INDEX idx_customers_name ON customers(name);
-CREATE INDEX idx_customers_customers_categories_id ON customers(customers_categories_id);
-
-CREATE INDEX idx_customers_categories_name ON customers_categories(name);
-CREATE INDEX idx_customers_categories_month_id ON customers_categories(month_id);
-
-CREATE INDEX idx_months_name ON months(name);
-
-CREATE INDEX idx_sales_customer_id ON sales(customer_id);
-CREATE INDEX idx_sales_sales_date ON sales(sales_date);
-CREATE INDEX idx_sales_sales_details_id ON sales(sales_details_id);
+-- Добавление уникального ограничения для таблицы products_suppliers_manufacturers
+ALTER TABLE products_suppliers_manufacturers ADD CONSTRAINT unique_supplier_manufacturer UNIQUE (products_suppliers_id, products_manufacturers_id);
 
 --Добавление данных в таблицу
 -- Вставка данных в таблицу Категорий продуктов (products_categories)
@@ -384,39 +364,209 @@ INSERT INTO sales (customer_id, sales_date, sales_details_id) VALUES
 ## **Хранимая процедура, которая будет собирать данные о продукте, при запросе ID продукта**
 
 --Код процедуры
-CREATE OR REPLACE FUNCTION get_product_info(product_id INT)
-RETURNS TABLE (
-    product_name VARCHAR(255),
-    category_name VARCHAR(255),
-    product_description TEXT,
-    supplier_name VARCHAR(255),
-    manufacturer_name VARCHAR(255)
-) AS $$
+CREATE OR REPLACE PROCEDURE get_product_info(
+    IN product_id INT,
+    INOUT product_name VARCHAR(255),
+    INOUT category_name VARCHAR(255),
+    INOUT product_description TEXT,
+    INOUT supplier_name VARCHAR(255),
+    INOUT manufacturer_name VARCHAR(255)
+)
+AS $$
 BEGIN
-    RETURN QUERY
-    SELECT 
-        p.name::VARCHAR(255) AS product_name,
-        pc.name::VARCHAR(255) AS category_name,
-        p.description::TEXT AS product_description,
-        ps.name::VARCHAR(255) AS supplier_name,
-        pm.name::VARCHAR(255) AS manufacturer_name
-    FROM 
+    SELECT
+        p.name,
+        pc.name,
+        p.description,
+        ps.name,
+        pm.name
+    INTO
+        product_name,
+        category_name,
+        product_description,
+        supplier_name,
+        manufacturer_name
+    FROM
         products p
-    JOIN 
+            JOIN
         products_categories pc ON p.products_categories_id = pc.id
-    JOIN 
+            JOIN
         products_suppliers ps ON p.products_suppliers_id = ps.id
-    JOIN 
+            JOIN
         products_suppliers_manufacturers psm ON ps.id = psm.products_suppliers_id
-    JOIN 
+            JOIN
         products_manufacturers pm ON psm.products_manufacturers_id = pm.id
-    WHERE 
+    WHERE
         p.id = product_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Вызов процедуры get_product_info, чтобы узнать информацию о продукте с ID = 1
-SELECT * FROM get_product_info(1);
+CALL get_product_info(
+        1,
+        NULL::VARCHAR(255),
+        NULL::VARCHAR(255),
+        NULL::TEXT,
+        NULL::VARCHAR(255),
+        NULL::VARCHAR(255)
+     );
 
 --Удаление процедуры get_product_info
-DROP FUNCTION IF EXISTS get_product_info(p_product_id INT);
+DROP PROCEDURE IF EXISTS get_product_info(p_product_id INT);
+
+## **Хранимая процедура, которая вносит данные о новом товаре**
+--Код процедуры
+CREATE OR REPLACE PROCEDURE insert_product_data(
+    IN manufacturer_name VARCHAR(255),
+    IN manufacturer_address TEXT,
+    IN manufacturer_phone VARCHAR(20),
+    IN manufacturer_email VARCHAR(255),
+    IN supplier_name VARCHAR(255),
+    IN supplier_address TEXT,
+    IN supplier_phone VARCHAR(20),
+    IN supplier_email VARCHAR(255),
+    IN delivery_date DATE,
+    IN manufacture_date DATE,
+    IN best_by_date DATE,
+    IN expiration_date DATE,
+    IN category_name VARCHAR(255),
+    IN product_name VARCHAR(255),
+    IN product_description TEXT,
+    IN price NUMERIC(10, 2),
+    IN discount_price NUMERIC(10, 2)
+)
+AS $$
+DECLARE
+    v_manufacturer_id INT;
+    v_supplier_id INT;
+    v_details_id INT;
+    v_product_id INT;
+    v_category_id INT;
+BEGIN
+    -- Вставка или обновление производителя
+    INSERT INTO products_manufacturers (name, address, phone, email)
+    VALUES (manufacturer_name, manufacturer_address, manufacturer_phone, manufacturer_email)
+    ON CONFLICT (name) DO UPDATE SET
+                                     address = EXCLUDED.address,
+                                     phone = EXCLUDED.phone,
+                                     email = EXCLUDED.email
+    RETURNING id INTO v_manufacturer_id;
+
+    -- Вставка или обновление поставщика
+    INSERT INTO products_suppliers (name, address, phone, email)
+    VALUES (supplier_name, supplier_address, supplier_phone, supplier_email)
+    ON CONFLICT (name) DO UPDATE SET
+                                     address = EXCLUDED.address,
+                                     phone = EXCLUDED.phone,
+                                     email = EXCLUDED.email
+    RETURNING id INTO v_supplier_id;
+
+    -- Вставка деталей продукта
+    INSERT INTO products_details (delivery_date, manufacture_date, best_by_date, expiration_date)
+    VALUES (delivery_date, manufacture_date, best_by_date, expiration_date)
+    RETURNING id INTO v_details_id;
+
+    -- Вставка или получение существующей категории продукта
+    INSERT INTO products_categories (name)
+    VALUES (category_name)
+    ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+    RETURNING id INTO v_category_id;
+
+    -- Вставка продукта
+    INSERT INTO products (products_categories_id, name, description, products_suppliers_id, products_details_id)
+    VALUES (v_category_id, product_name, product_description, v_supplier_id, v_details_id)
+    RETURNING id INTO v_product_id;
+
+    -- Вставка цены продукта
+    INSERT INTO products_prices (product_id, price, discount_price)
+    VALUES (v_product_id, price, discount_price);
+
+    -- Связывание поставщика и производителя
+    INSERT INTO products_suppliers_manufacturers (products_suppliers_id, products_manufacturers_id)
+    VALUES (v_supplier_id, v_manufacturer_id)
+    ON CONFLICT (products_suppliers_id, products_manufacturers_id) DO NOTHING;
+END;
+$$ LANGUAGE plpgsql;
+
+--Вызов процедуры insert_product_data
+CALL insert_product_data(
+        'Производитель 99', 'Адрес производителя 99', '1234567890', 'manufacturer99@example.com',
+        'Поставщик 99', 'Адрес поставщика 99', '0987654321', 'supplier99@example.com',
+        '2023-10-01', '2023-09-01', '2024-09-30', '2024-10-01',
+        'Категория 199', 'Продукт 99', 'Описание продукта 99', 100.00, 90.00);
+
+## **Хранимая процедура, которая будет проверять, если ли в списке покупок категории товаров на которые у покупателя выбрана скидка**
+--Код процедуры
+CREATE OR REPLACE PROCEDURE check_customer_discounts(
+    IN p_customer_id INT,
+    IN p_sale_id INT
+)
+AS $$
+DECLARE
+    v_category_name VARCHAR(255);
+    v_has_discount BOOLEAN;
+    v_discount_found BOOLEAN := FALSE;
+BEGIN
+    FOR v_category_name, v_has_discount IN
+        SELECT * FROM check_customer_discount_categories(p_customer_id, p_sale_id)
+        LOOP
+            IF v_has_discount THEN
+                RAISE NOTICE 'Категория % имеет скидку для покупателя', v_category_name;
+                v_discount_found := TRUE;
+            ELSE
+                RAISE NOTICE 'Категория % не имеет скидки для покупателя', v_category_name;
+            END IF;
+        END LOOP;
+
+    IF NOT v_discount_found THEN
+        RAISE NOTICE 'У покупателя нет скидок на категории товаров в этой покупке';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+--Вызов процедуры check_customer_discounts
+CALL check_customer_discounts(1, 1);
+
+## **Хранимая процедура, которая будет выгружаnm покупателей**
+--Код процедуры
+CREATE OR REPLACE PROCEDURE export_customers_proc()
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    r RECORD;
+BEGIN
+    -- Выводим заголовок
+    RAISE NOTICE 'Экспорт покупателей:';
+    RAISE NOTICE '------------------------';
+    RAISE NOTICE 'ID | Имя | Адрес | Телефон | Email | Категория | Месяц скидки';
+    RAISE NOTICE '------------------------';
+
+    -- Выполняем запрос и выводим результаты
+    FOR r IN (
+        SELECT
+            c.id AS customer_id,
+            c.name AS customer_name,
+            c.address AS customer_address,
+            c.phone AS customer_phone,
+            c.email AS customer_email,
+            cc.name AS category_name,
+            m.name AS discount_month
+        FROM
+            customers c
+                JOIN
+            customers_categories cc ON c.customers_categories_id = cc.id
+                JOIN
+            months m ON cc.month_id = m.id
+        ORDER BY
+            c.id
+    )
+        LOOP
+            RAISE NOTICE '% | % | % | % | % | % | %',
+                r.customer_id, r.customer_name, r.customer_address, r.customer_phone,
+                r.customer_email, r.category_name, r.discount_month;
+        END LOOP;
+END;
+$$;
+
+--Вызов процедуры export_customers_proc
+CALL export_customers_proc();
