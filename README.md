@@ -51,7 +51,6 @@
 	* `id` - ID деталей прокупки
 	* `product_id` - ID продукта
 	* `quantity` - Количество
-	* `products_price_id` - ID цены продукта
 
 * Покупки (`sales`)
 	* `id` - ID покупки
@@ -190,15 +189,12 @@ CREATE TABLE sales_details (
     id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,
     quantity INT NOT NULL,
-    products_price_id INT NOT NULL,
-    FOREIGN KEY (product_id) REFERENCES products(id),
-    FOREIGN KEY (products_price_id) REFERENCES products_prices(id)
+    FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
 COMMENT ON COLUMN sales_details.id IS 'ID деталей покупки';
 COMMENT ON COLUMN sales_details.product_id IS 'ID продукта';
 COMMENT ON COLUMN sales_details.quantity IS 'Количество';
-COMMENT ON COLUMN sales_details.products_price_id IS 'ID цены продукта';
 
 -- Создание таблицы Месяца (months)
 CREATE TABLE months (
@@ -321,12 +317,12 @@ INSERT INTO products_prices (product_id, price, discount_price) VALUES
 (5, 60.00, 54.00);
 
 -- Вставка данных в таблицу Детали покупки (sales_details)
-INSERT INTO sales_details (product_id, quantity, products_price_id) VALUES
-(1, 2, 1),
-(2, 3, 2),
-(3, 1, 3),
-(4, 5, 4),
-(5, 4, 5);
+INSERT INTO sales_details (product_id, quantity) VALUES
+(1, 2),
+(2, 3),
+(3, 1),
+(4, 5),
+(5, 4);
 
 -- Вставка данных в таблицу Покупатели (customers)
 INSERT INTO customers (name, address, phone, email, customers_categories_id) VALUES
@@ -495,54 +491,58 @@ CALL insert_product_data(
         '2023-10-01', '2023-09-01', '2024-09-30', '2024-10-01',
         'Категория 199', 'Продукт 99', 'Описание продукта 99', 100.00, 90.00);
 
-## **Хранимая процедура, которая будет проверять, если ли в списке покупок категории товаров на которые у покупателя выбрана скидка**
+## **Хранимая функция, которая будет проверять, если ли в списке покупок категории товаров на которые у покупателя выбрана скидка**
 --Код процедуры
-CREATE OR REPLACE PROCEDURE check_customer_discounts(
-    IN p_customer_id INT,
-    IN p_sale_id INT
+CREATE OR REPLACE FUNCTION check_customer_discount_categories(
+    p_customer_id INT,
+    p_sale_id INT
 )
+    RETURNS TABLE (
+                      category_name VARCHAR(255),
+                      has_discount BOOLEAN
+                  )
 AS $$
-DECLARE
-    v_category_name VARCHAR(255);
-    v_has_discount BOOLEAN;
-    v_discount_found BOOLEAN := FALSE;
 BEGIN
-    FOR v_category_name, v_has_discount IN
-        SELECT * FROM check_customer_discount_categories(p_customer_id, p_sale_id)
-        LOOP
-            IF v_has_discount THEN
-                RAISE NOTICE 'Категория % имеет скидку для покупателя', v_category_name;
-                v_discount_found := TRUE;
-            ELSE
-                RAISE NOTICE 'Категория % не имеет скидки для покупателя', v_category_name;
-            END IF;
-        END LOOP;
-
-    IF NOT v_discount_found THEN
-        RAISE NOTICE 'У покупателя нет скидок на категории товаров в этой покупке';
-    END IF;
+    RETURN QUERY
+        SELECT
+            pc.name AS category_name,
+            CASE WHEN cc.name = pc.name THEN TRUE ELSE FALSE END AS has_discount
+        FROM
+            sales s
+                JOIN
+            sales_details sd ON s.sales_details_id = sd.id
+                JOIN
+            products p ON sd.product_id = p.id
+                JOIN
+            products_categories pc ON p.products_categories_id = pc.id
+                LEFT JOIN
+            customers c ON s.customer_id = c.id
+                LEFT JOIN
+            customers_categories cc ON c.customers_categories_id = cc.id
+        WHERE
+            s.id = p_sale_id AND s.customer_id = p_customer_id;
 END;
 $$ LANGUAGE plpgsql;
 
---Вызов процедуры check_customer_discounts
-CALL check_customer_discounts(1, 1);
+--Вызов функции check_customer_discount_categories
+SELECT check_customer_discount_categories(1, 1);
 
-## **Хранимая процедура, которая будет выгружаnm покупателей**
+## **Хранимая функция, которая будет выгружать покупателей**
 --Код процедуры
-CREATE OR REPLACE PROCEDURE export_customers_proc()
+CREATE OR REPLACE FUNCTION export_customers()
+    RETURNS TABLE (
+                      customer_id INT,
+                      customer_name VARCHAR(255),
+                      customer_address TEXT,
+                      customer_phone VARCHAR(20),
+                      customer_email VARCHAR(255),
+                      category_name VARCHAR(255),
+                      discount_month VARCHAR(255)
+                  )
     LANGUAGE plpgsql
 AS $$
-DECLARE
-    r RECORD;
 BEGIN
-    -- Выводим заголовок
-    RAISE NOTICE 'Экспорт покупателей:';
-    RAISE NOTICE '------------------------';
-    RAISE NOTICE 'ID | Имя | Адрес | Телефон | Email | Категория | Месяц скидки';
-    RAISE NOTICE '------------------------';
-
-    -- Выполняем запрос и выводим результаты
-    FOR r IN (
+    RETURN QUERY
         SELECT
             c.id AS customer_id,
             c.name AS customer_name,
@@ -558,15 +558,9 @@ BEGIN
                 JOIN
             months m ON cc.month_id = m.id
         ORDER BY
-            c.id
-    )
-        LOOP
-            RAISE NOTICE '% | % | % | % | % | % | %',
-                r.customer_id, r.customer_name, r.customer_address, r.customer_phone,
-                r.customer_email, r.category_name, r.discount_month;
-        END LOOP;
+            c.id;
 END;
 $$;
 
---Вызов процедуры export_customers_proc
-CALL export_customers_proc();
+--Вызов функции export_customers
+SELECT export_customers();
